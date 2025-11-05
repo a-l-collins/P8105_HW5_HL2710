@@ -3,3 +3,45 @@ Homework 5
 Ainsel Levitskaia-Collins, HL2710
 2025-11-05
 
+### Problem 1
+
+Function:
+
+- [x] fixed group size
+- [x] randomly draws “birthdays” for each person
+- [x] checks whether there are duplicate birthdays in the group
+- [x] returns `TRUE` or `FALSE` based on the result
+
+``` r
+#' repeat_birthdays
+#'
+#' @param group_size The size of the sample for which birthdays will be selected
+#'
+#' @returns A boolean value for whether or not there are any overlapping birthdays within the sample
+repeat_birthdays = function(group_size) {
+  birthday_df <- data.frame(birthdays = sample(1:365, size = group_size, replace = TRUE)) %>% 
+    group_by(birthdays) %>% 
+    count(birthdays) %>% 
+    arrange(desc(n))
+  
+  overlap <- FALSE
+  
+  for (i in 1:ncol(birthday_df)) {
+    if (pull(birthday_df, n)[[1]] > 1) {
+      overlap = TRUE
+    }
+  }
+  
+  overlap
+}
+```
+
+Analysis:
+
+- [ ] run above function 10,000 times for each group size between 2 and
+  50
+- [ ] for each group size, compute the probability that at least two
+  people in the group will share a birthday by averaging across the
+  10,000 simulation runs
+- [ ] make a plot showing the probability as a function of group size
+- [ ] comment on results
