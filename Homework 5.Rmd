@@ -1,0 +1,6 @@
+---
+title: "Homework 5"
+author: "Ainsel Levitskaia-Collins, HL2710"
+date: "2025-11-05"
+output: github_document
+---
