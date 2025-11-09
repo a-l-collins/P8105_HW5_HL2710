@@ -65,7 +65,7 @@ birthday_sim_df <-
 - [x] fix n = 30
 - [x] fix sd = 5
 - [x] set mean = 0
-- [ ] generate 5,000 datasets from the model `x ~ Normal[mean, sd]`
+- [x] generate 5,000 datasets from the model `x ~ Normal[mean, sd]`
 - [ ] for each dataset, save mean-hat and the p-value arising from a
   test of H: mean = 0, using alpha = 0.05
   - use `broom::tidy` to clean the output of `t.test`
@@ -84,14 +84,18 @@ birthday_sim_df <-
     null is rejected approximately equal to the true value of mean? why
     or why not?
 
+PROBLEM
+
+- it should not be one t.test per mean– it should be one t.test per
+  *iteration*
+- double nested for loop –\> one for the mean and one for the iteration
+
 ``` r
 normal_sim = function(n = 30, mean, sd) {
   x_vec <- tibble(x = rnorm(n, mean, sd))
   
   x_vec
 }
-
-# normal_sim_df <- normal_sim(mean = 0, sd = 5)
 
 normal_sim_df <-
   expand_grid(
@@ -102,6 +106,39 @@ normal_sim_df <-
     x = map2(mean, sd, \(mean, sd) normal_sim(mean = mean, sd = sd))
   ) %>% 
   unnest(x)
+
+normal_sim_means <-
+  normal_sim_df %>% 
+  group_by(mean, iter) %>%  
+  summarize(mean_hat = mean(x))
+```
+
+    ## `summarise()` has grouped output by 'mean'. You can override using the
+    ## `.groups` argument.
+
+``` r
+grouped_ttest = function(variable, mean) {
+  fit <- 
+    t.test(
+      variable,
+      alternative = "t",
+      mu = mean, 
+      conf.level = 0.95) %>% 
+    broom::tidy()
+  
+  fit
+}
+
+fit <- NULL;
+for (m in 0:6) {
+  for (i in 1:5000) {
+    normal_sim_filter <- normal_sim_df %>% 
+      filter(mean == m) %>% 
+      filter(iter == i)
+    
+    fit <- rbind(fit, grouped_ttest(pull(normal_sim_filter, x), m))
+  }
+}
 ```
 
 ### Problem 3
