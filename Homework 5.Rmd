@@ -19,7 +19,7 @@ Function:
 - [X] checks whether there are duplicate birthdays in the group
 - [X] returns `TRUE` or `FALSE` based on the result
 
-```{r}
+```{r eval = FALSE}
 #' repeat_birthdays
 #'
 #' @param group_size The size of the sample for which birthdays will be selected
@@ -41,6 +41,8 @@ repeat_birthdays = function(group_size) {
   
   overlap
 }
+
+# write.table(sim_results_df, "./data/birthday_sim_results.txt", col.names = T, row.names = F, quote = F, sep = "\t")
 ```
 
 
@@ -50,3 +52,53 @@ Analysis:
 - [ ] for each group size, compute the probability that at least two people in the group will share a birthday by averaging across the 10,000 simulation runs
 - [ ] make a plot showing the probability as a function of group size
 - [ ] comment on results
+
+```{r eval = FALSE}
+birthday_sim_df <-
+  expand_grid(
+    sample_size = 2:5,
+    iter = 1:10
+  ) %>% 
+  mutate(
+    estimate_df = map(sample_size, repeat_birthdays)
+  ) %>% 
+  unnest(estimate_df)
+```
+
+### Problem 2
+
+- [X] fix n = 30
+- [X] fix sd = 5
+- [X] set mean = 0
+- [ ] generate 5,000 datasets from the model `x ~ Normal[mean, sd]`
+- [ ] for each dataset, save mean-hat and the p-value arising from a test of H: mean = 0, using alpha = 0.05
+  - use `broom::tidy` to clean the output of `t.test`
+- [ ] repeat the above for mean = {1, 2, 3, 4, 5, 6}
+- [ ] make a plot showing the proportion of times the null was rejected (the power of the test) on the y axis and the true value of mean on the x axis
+  - [ ] describe the association between effect size and power
+- [ ] make a plot showing the average estimate of mean-hat on the y axis and the true value of mean on the x axis
+- [ ] make a second plot, or overlay on the above, the average estimate of mean-hat *only in the samples for which the null was rejected* (ie significant samples) on the y axis and the true value of mean on the x axis
+  - [ ] is the sample average of mean-hat across tests for which the null is rejected approximately equal to the true value of mean? why or why not?
+
+```{r}
+normal_sim = function(n = 30, mean, sd) {
+  x_vec <- tibble(x = rnorm(n, mean, sd))
+  
+  x_vec
+}
+
+# normal_sim_df <- normal_sim(mean = 0, sd = 5)
+
+normal_sim_df <-
+  expand_grid(
+    mean = 0:6,
+    sd = 5,
+    iter = 1:5000) %>% 
+  mutate(
+    x = map2(mean, sd, \(mean, sd) normal_sim(mean = mean, sd = sd))
+  ) %>% 
+  unnest(x)
+```
+
+
+### Problem 3
