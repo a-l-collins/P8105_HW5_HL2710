@@ -69,6 +69,8 @@ birthday_sim_df <-
 
 ### Problem 2
 
+#### Creating the dataframe
+
 Creating a function that generates results for the model $x \sim {\sf Normal}[\mu, \sigma]$ with a set *n* of 30:
 
 ```{r}
@@ -109,9 +111,8 @@ normal_sim_results <- normal_sim_df %>%
   group_by(iter) %>% 
   summarise(
     mean_true = unique(mean),
-    ttest = list(broom::tidy(t.test(x, conf.level = 0.95, mu = unique(mean)[1])))
+    ttest = list(broom::tidy(t.test(x, mu = unique(mean)[1], conf.level = 0.95)))
   ) %>% 
-  janitor::clean_names() %>% 
   unnest(ttest)
 ```
 
@@ -130,11 +131,37 @@ normal_sim_results <- normal_sim_results %>%
 head(normal_sim_results)
 ```
 
-
 - [ ] make a plot showing the proportion of times the null was rejected (the power of the test) on the y axis and the true value of mean on the x axis
   - [ ] describe the association between effect size and power
-- [ ] make a plot showing the average estimate of mean-hat on the y axis and the true value of mean on the x axis
+
+#### Plot 1: comparing power against true mean value
+
+First, calculating power:
+
+```{r eval = FALSE}
+normal_sim_results <- normal_sim_results %>% 
+  mutate(power = 1 - p.value)
+```
+
+#### Plot 2: comparing the estimated mean and the true mean
+
+```{r}
+plot_normal_sim_means <- normal_sim_means %>% 
+  group_by(mean_true) %>% 
+  summarise(mean_hat_avg = mean(mean_hat)) %>% 
+  ggplot(aes(x = mean_true, y = mean_hat_avg)) +
+  geom_bar(stat = "identity", width = 0.7) +
+  theme_minimal() +
+  xlab("True Mean") +
+  ylab("Average Estimate Mean")
+
+plot_normal_sim_means
+```
+
+
 - [ ] make a second plot, or overlay on the above, the average estimate of mean-hat *only in the samples for which the null was rejected* (ie significant samples) on the y axis and the true value of mean on the x axis
   - [ ] is the sample average of mean-hat across tests for which the null is rejected approximately equal to the true value of mean? why or why not?
+
+
 
 ### Problem 3

@@ -62,6 +62,8 @@ birthday_sim_df <-
 
 ### Problem 2
 
+#### Creating the dataframe
+
 Creating a function that generates results for the model
 $x \sim {\sf Normal}[\mu, \sigma]$ with a set *n* of 30:
 
@@ -106,9 +108,8 @@ normal_sim_results <- normal_sim_df %>%
   group_by(iter) %>% 
   summarise(
     mean_true = unique(mean),
-    ttest = list(broom::tidy(t.test(x, conf.level = 0.95, mu = unique(mean)[1])))
+    ttest = list(broom::tidy(t.test(x, mu = unique(mean)[1], conf.level = 0.95)))
   ) %>% 
-  janitor::clean_names() %>% 
   unnest(ttest)
 ```
 
@@ -129,26 +130,51 @@ head(normal_sim_results)
 ```
 
     ##   iter mean_true    mean_hat      p.value estimate statistic parameter conf.low
-    ## 1    1         0  2.49282660 1.831566e-16 3.224628  8.959626       209 2.515115
-    ## 2    2         0 -0.43925809 4.803589e-16 3.295620  8.811931       209 2.558333
-    ## 3    3         0  0.77372225 8.701994e-14 3.162030  7.995009       209 2.382349
-    ## 4    4         0 -0.09875799 5.962512e-16 3.371727  8.778678       209 2.614557
-    ## 5    5         0  0.61457133 3.342239e-14 2.759712  8.148255       209 2.092030
-    ## 6    6         0  1.01083234 1.368068e-14 2.958643  8.290040       209 2.255075
+    ## 1    1         0 -0.25891220 1.893878e-17 3.383621  9.303292       209 2.666627
+    ## 2    2         0 -0.41301998 2.359653e-12 2.792567  7.454420       209 2.054051
+    ## 3    3         0 -0.23714255 1.843893e-15 3.067731  8.604064       209 2.364847
+    ## 4    4         0 -0.06715127 5.562918e-17 3.365562  9.140758       209 2.639714
+    ## 5    5         0  0.14407167 4.953145e-15 3.155592  8.449910       209 2.419387
+    ## 6    6         0  0.55030282 1.219743e-09 2.464137  6.364491       209 1.700879
     ##   conf.high            method alternative
-    ## 1  3.934140 One Sample t-test   two.sided
-    ## 2  4.032906 One Sample t-test   two.sided
-    ## 3  3.941712 One Sample t-test   two.sided
-    ## 4  4.128898 One Sample t-test   two.sided
-    ## 5  3.427393 One Sample t-test   two.sided
-    ## 6  3.662212 One Sample t-test   two.sided
+    ## 1  4.100615 One Sample t-test   two.sided
+    ## 2  3.531083 One Sample t-test   two.sided
+    ## 3  3.770616 One Sample t-test   two.sided
+    ## 4  4.091410 One Sample t-test   two.sided
+    ## 5  3.891798 One Sample t-test   two.sided
+    ## 6  3.227395 One Sample t-test   two.sided
 
 - [ ] make a plot showing the proportion of times the null was rejected
   (the power of the test) on the y axis and the true value of mean on
   the x axis
   - [ ] describe the association between effect size and power
-- [ ] make a plot showing the average estimate of mean-hat on the y axis
-  and the true value of mean on the x axis
+
+#### Plot 1: comparing power against true mean value
+
+First, calculating power:
+
+``` r
+normal_sim_results <- normal_sim_results %>% 
+  mutate(power = 1 - p.value)
+```
+
+#### Plot 2: comparing the estimated mean and the true mean
+
+``` r
+plot_normal_sim_means <- normal_sim_means %>% 
+  group_by(mean_true) %>% 
+  summarise(mean_hat_avg = mean(mean_hat)) %>% 
+  ggplot(aes(x = mean_true, y = mean_hat_avg)) +
+  geom_bar(stat = "identity", width = 0.7) +
+  theme_minimal() +
+  xlab("True Mean") +
+  ylab("Average Estimate Mean")
+
+plot_normal_sim_means
+```
+
+![](Homework-5_files/figure-gfm/unnamed-chunk-10-1.png)<!-- -->
+
 - [ ] make a second plot, or overlay on the above, the average estimate
   of mean-hat *only in the samples for which the null was rejected* (ie
   significant samples) on the y axis and the true value of mean on the x
