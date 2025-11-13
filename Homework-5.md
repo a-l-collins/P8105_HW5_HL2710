@@ -145,9 +145,7 @@ sure why this is.
 
 #### Preparing the data
 
-Importing the data, tidying the data, and creating a table with the
-number of resolved and unresolved homicides for each of the cities
-present within the database:
+Importing the data, tidying the data:
 
 ``` r
 homicide_raw <- read_csv(file = "./data/homicide-data.csv") %>% 
@@ -158,7 +156,37 @@ homicide_raw <- read_csv(file = "./data/homicide-data.csv") %>%
                                TRUE ~ 1,
                                FALSE ~ 0)) %>% 
   select(city_state, disposition, resolved, everything())
+```
 
+Testing city counts and removing Tulsa, AL for having only 1
+observation:
+
+``` r
+homicide_city_count <- homicide_raw %>% 
+  count(city_state) %>% 
+  arrange(n)
+
+homicide_raw <- homicide_raw %>% 
+  filter(city_state != "Tulsa ,  AL")
+
+head(homicide_city_count, 1)
+```
+
+    ## # A tibble: 1 × 2
+    ##   city_state      n
+    ##   <chr>       <int>
+    ## 1 Tulsa ,  AL     1
+
+The homicide data has 52178 observations of 14 variables, one of which
+includes a combined `city_state` variable that has both the city and the
+state in which the homicide took place. The data describes where the
+homicide took place, the report date, basic demographics of the victim
+in the report, and locational data for each homicide.
+
+Creating a table with the number of resolved and unresolved homicides
+for each of the cities present within the database:
+
+``` r
 homicide_counts <- homicide_raw %>% 
   group_by(city_state) %>% 
   count(resolved) %>% 
@@ -220,15 +248,8 @@ knitr::kable(homicide_counts, col.names = c("City, State", "Unresolved Homicide 
 | St. Louis , MO      |                       905 |                     772 |
 | Stockton , CA       |                       266 |                     178 |
 | Tampa , FL          |                        95 |                     113 |
-| Tulsa , AL          |                        NA |                       1 |
 | Tulsa , OK          |                       193 |                     390 |
 | Washington , DC     |                       589 |                     756 |
-
-The homicide data has 52179 observations of 14 variables, one of which
-includes a combined `city_state` variable that has both the city and the
-state in which the homicide took place. The data describes where the
-homicide took place, the report date, basic demographics of the victim
-in the report, and locational data for each homicide.
 
 #### Running `prop.test`
 
@@ -278,24 +299,35 @@ Running the function on all cities within the `homicide_raw` dataframe:
 ``` r
 homicide_cities <- unique(pull(homicide_raw, city_state))
 
-homicide_estimates <- purrr::map_dfr(homicide_cities, homicide_proptest)
+homicide_estimates <- purrr::map_dfr(homicide_cities, homicide_proptest) %>% 
+  arrange(desc(estimate))
 
 head(homicide_estimates)
 ```
 
     ## # A tibble: 6 × 4
-    ##   city_state        estimate conf.low conf.high
-    ##   <chr>                <dbl>    <dbl>     <dbl>
-    ## 1 Albuquerque ,  NM    0.614    0.562     0.663
-    ## 2 Atlanta ,  GA        0.617    0.585     0.647
-    ## 3 Baltimore ,  MD      0.354    0.337     0.372
-    ## 4 Baton Rouge ,  LA    0.538    0.489     0.586
-    ## 5 Birmingham ,  AL     0.566    0.531     0.601
-    ## 6 Boston ,  MA         0.495    0.455     0.535
+    ##   city_state      estimate conf.low conf.high
+    ##   <chr>              <dbl>    <dbl>     <dbl>
+    ## 1 Richmond ,  VA     0.737    0.692     0.777
+    ## 2 Charlotte ,  NC    0.700    0.664     0.734
+    ## 3 Memphis ,  TN      0.681    0.657     0.704
+    ## 4 Tulsa ,  OK        0.669    0.629     0.707
+    ## 5 Fresno ,  CA       0.653    0.609     0.695
+    ## 6 Milwaukee ,  wI    0.639    0.609     0.667
 
-#### Plot 1:
+#### Plot 1: Comparing estimates and CIs for all cities
 
-- [ ] create a plot that shows the estimates and CIs for each city
-- [ ] check out `geom_errorbar` for a way to add error bars based on
-  upper and lower limits
-- [ ] organize cities according to the proportion of unsolved homicides
+``` r
+plot_homicide <- homicide_estimates %>% 
+  ggplot(aes(x = fct_inorder(city_state))) +
+  geom_errorbar(mapping = aes(ymin = conf.low, ymax = conf.high)) +
+  geom_point(mapping = aes(y = estimate), shape = 21, fill = "white") +
+  theme_minimal() +
+  xlab("") +
+  ylab("Proportion of Unresolved Homicides") +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.3, hjust = 1))
+
+plot_homicide
+```
+
+![](Homework-5_files/figure-gfm/unnamed-chunk-13-1.png)<!-- -->

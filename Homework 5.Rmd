@@ -145,7 +145,7 @@ The sample average of $\hat{\mu}$ across tests for which the null is rejected is
 
 #### Preparing the data
 
-Importing the data, tidying the data, and creating a table with the number of resolved and unresolved homicides for each of the cities present within the database:
+Importing the data, tidying the data:
 
 ```{r message = FALSE}
 homicide_raw <- read_csv(file = "./data/homicide-data.csv") %>% 
@@ -156,7 +156,26 @@ homicide_raw <- read_csv(file = "./data/homicide-data.csv") %>%
                                TRUE ~ 1,
                                FALSE ~ 0)) %>% 
   select(city_state, disposition, resolved, everything())
+```
 
+Testing city counts and removing Tulsa, AL for having only 1 observation:
+
+```{r}
+homicide_city_count <- homicide_raw %>% 
+  count(city_state) %>% 
+  arrange(n)
+
+homicide_raw <- homicide_raw %>% 
+  filter(city_state != "Tulsa ,  AL")
+
+head(homicide_city_count, 1)
+```
+
+The homicide data has `r nrow(homicide_raw)` observations of `r ncol(homicide_raw)` variables, one of which includes a combined `city_state` variable that has both the city and the state in which the homicide took place. The data describes where the homicide took place, the report date, basic demographics of the victim in the report, and locational data for each homicide.
+
+Creating a table with the number of resolved and unresolved homicides for each of the cities present within the database:
+
+```{r}
 homicide_counts <- homicide_raw %>% 
   group_by(city_state) %>% 
   count(resolved) %>% 
@@ -167,8 +186,6 @@ homicide_counts <- homicide_raw %>%
 
 knitr::kable(homicide_counts, col.names = c("City, State", "Unresolved Homicide Cases", "Resolved Homicide Cases"))
 ```
-
-The homicide data has `r nrow(homicide_raw)` observations of `r ncol(homicide_raw)` variables, one of which includes a combined `city_state` variable that has both the city and the state in which the homicide took place. The data describes where the homicide took place, the report date, basic demographics of the victim in the report, and locational data for each homicide.
 
 #### Running `prop.test`
 
@@ -211,14 +228,25 @@ Running the function on all cities within the `homicide_raw` dataframe:
 ```{r warning = FALSE}
 homicide_cities <- unique(pull(homicide_raw, city_state))
 
-homicide_estimates <- purrr::map_dfr(homicide_cities, homicide_proptest)
+homicide_estimates <- purrr::map_dfr(homicide_cities, homicide_proptest) %>% 
+  arrange(desc(estimate))
 
 head(homicide_estimates)
 ```
 
 
-#### Plot 1: 
+#### Plot 1: Comparing estimates and CIs for all cities
 
-- [ ] create a plot that shows the estimates and CIs for each city
-- [ ] check out `geom_errorbar` for a way to add error bars based on upper and lower limits
-- [ ] organize cities according to the proportion of unsolved homicides
+```{r}
+plot_homicide <- homicide_estimates %>% 
+  ggplot(aes(x = fct_inorder(city_state))) +
+  geom_errorbar(mapping = aes(ymin = conf.low, ymax = conf.high)) +
+  geom_point(mapping = aes(y = estimate), shape = 21, fill = "white") +
+  theme_minimal() +
+  xlab("") +
+  ylab("Proportion of Unresolved Homicides") +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.3, hjust = 1))
+
+plot_homicide
+```
+
