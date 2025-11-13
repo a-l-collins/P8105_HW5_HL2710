@@ -5,12 +5,7 @@ Ainsel Levitskaia-Collins, HL2710
 
 ### Problem 1
 
-Function:
-
-- [x] fixed group size
-- [x] randomly draws “birthdays” for each person
-- [x] checks whether there are duplicate birthdays in the group
-- [x] returns `TRUE` or `FALSE` based on the result
+This problem is unfinished.
 
 ``` r
 #' repeat_birthdays
@@ -35,20 +30,6 @@ repeat_birthdays = function(group_size) {
   overlap
 }
 
-# write.table(sim_results_df, "./data/birthday_sim_results.txt", col.names = T, row.names = F, quote = F, sep = "\t")
-```
-
-Analysis:
-
-- [ ] run above function 10,000 times for each group size between 2 and
-  50
-- [ ] for each group size, compute the probability that at least two
-  people in the group will share a birthday by averaging across the
-  10,000 simulation runs
-- [ ] make a plot showing the probability as a function of group size
-- [ ] comment on results
-
-``` r
 birthday_sim_df <-
   expand_grid(
     sample_size = 2:5,
@@ -64,12 +45,24 @@ birthday_sim_df <-
 
 #### Creating the dataframe
 
-Creating a function that generates results for the model
-$x \sim {\sf Normal}[\mu, \sigma]$ with a set *n* of 30:
+Creating a function that
+
+1.  Generates a tibble for the model $x \sim {\sf Normal}[\mu, \sigma]$
+    with a set *n* of 30
+2.  Runs a t-test on that tibble
+3.  Returns that tibble
 
 ``` r
 normal_sim = function(n = 30, mean, sd) {
   x_vec <- tibble(x = rnorm(n, mean, sd))
+  
+  x_vec <- x_vec %>% 
+    summarise(
+      mean_true = mean,
+      mean_estimate = mean(x),
+      ttest = list(broom::tidy(t.test(x, mu = unique(mean)[1], conf.level = 0.95, alternative = "t")))
+      ) %>% 
+    unnest(ttest)
   
   x_vec
 }
@@ -90,97 +83,62 @@ normal_sim_df <-
   unnest(x)
 ```
 
-Extracting $\hat{\mu}$ for every iteration group:
-
-``` r
-normal_sim_means <-
-  normal_sim_df %>% 
-  group_by(mean, iter) %>%  
-  summarize(mean_hat = mean(x))
-```
-
-Running `t.test` with a significance level of 0.05 on every iteration
-group and producing an end dataframe that retains the original expected
-$\mu$ value while also containing `t.test` results:
-
-``` r
-normal_sim_results <- normal_sim_df %>% 
-  group_by(iter) %>% 
-  summarise(
-    mean_true = unique(mean),
-    ttest = list(broom::tidy(t.test(x, mu = unique(mean)[1], conf.level = 0.95)))
-  ) %>% 
-  unnest(ttest)
-```
-
-Adding the $\hat{\mu}$ values into the `t.test` results dataframe, and
-organizing the `normal_sim_results` structure:
-
-``` r
-normal_sim_means <- normal_sim_means %>% rename(mean_true = mean)
-
-normal_sim_results <- merge(normal_sim_results, normal_sim_means, by = c("mean_true", "iter"))
-
-normal_sim_results <- normal_sim_results %>% 
-  select(iter, mean_true, mean_hat, p.value, everything()) %>% 
-  arrange(iter) %>% 
-  arrange(mean_true)
-
-head(normal_sim_results)
-```
-
-    ##   iter mean_true    mean_hat      p.value estimate statistic parameter conf.low
-    ## 1    1         0 -0.25891220 1.893878e-17 3.383621  9.303292       209 2.666627
-    ## 2    2         0 -0.41301998 2.359653e-12 2.792567  7.454420       209 2.054051
-    ## 3    3         0 -0.23714255 1.843893e-15 3.067731  8.604064       209 2.364847
-    ## 4    4         0 -0.06715127 5.562918e-17 3.365562  9.140758       209 2.639714
-    ## 5    5         0  0.14407167 4.953145e-15 3.155592  8.449910       209 2.419387
-    ## 6    6         0  0.55030282 1.219743e-09 2.464137  6.364491       209 1.700879
-    ##   conf.high            method alternative
-    ## 1  4.100615 One Sample t-test   two.sided
-    ## 2  3.531083 One Sample t-test   two.sided
-    ## 3  3.770616 One Sample t-test   two.sided
-    ## 4  4.091410 One Sample t-test   two.sided
-    ## 5  3.891798 One Sample t-test   two.sided
-    ## 6  3.227395 One Sample t-test   two.sided
-
-- [ ] make a plot showing the proportion of times the null was rejected
-  (the power of the test) on the y axis and the true value of mean on
-  the x axis
-  - [ ] describe the association between effect size and power
-
 #### Plot 1: comparing power against true mean value
 
-First, calculating power:
+A plot of the proportion of times the null was rejected (y-axis)
+compared against the true value of the mean (x-axis).
 
 ``` r
-normal_sim_results <- normal_sim_results %>% 
-  mutate(power = 1 - p.value)
+plot_normal_sim_power <- normal_sim_df %>% 
+  group_by(mean_true) %>% 
+  mutate(
+    reject = p.value < 0.05,
+    reject = case_match(reject,
+                        FALSE ~ "reject_no",
+                        TRUE ~ "reject_yes")) %>% 
+  count(reject) %>% 
+  pivot_wider(
+    names_from = reject,
+    values_from = n
+  ) %>% 
+  mutate(reject_proportion = reject_yes / (reject_no + reject_yes)) %>% 
+  as.data.frame() %>% 
+  ggplot(aes(y = reject_proportion, x = mean_true, group = mean_true)) +
+  geom_bar(stat = "identity", width = 0.6, fill = "palevioletred3") +
+  theme_minimal() +
+  ylab("Rejection Proportion") +
+  xlab("True Mean Value")
+
+plot_normal_sim_power
 ```
 
-#### Plot 2: comparing the estimated mean and the true mean
+![](Homework-5_files/figure-gfm/unnamed-chunk-5-1.png)<!-- -->
+
+There does not appear to be an association between the size of the mean
+and the power of the test, as all 7 mean groups have approximately the
+same proportion of times that the estimated mean was rejected.
+
+#### Plot 2: comparing the estimated means and the true mean
 
 ``` r
-plot_normal_sim_means <- normal_sim_means %>% 
-  group_by(mean_true) %>% 
-  summarise(mean_hat_avg = mean(mean_hat)) %>% 
-  ggplot(aes(x = mean_true, y = mean_hat_avg)) +
-  geom_bar(stat = "identity", width = 0.7) +
+normal_sim_rejects <- normal_sim_df %>% 
+  filter(p.value < 0.05)
+
+plot_normal_sim_means <- normal_sim_df %>% 
+  ggplot(aes(x = mean_true, y = mean_estimate, group = mean_true)) +
+  geom_boxplot() +
+  geom_violin(data = normal_sim_rejects, fill = "palegreen4", color = "palegreen4", alpha = 0.5) +
   theme_minimal() +
-  xlab("True Mean") +
-  ylab("Average Estimate Mean")
+  ylab("Estimate Mean") +
+  xlab("True Mean (green = p<0.05)")
 
 plot_normal_sim_means
 ```
 
-![](Homework-5_files/figure-gfm/unnamed-chunk-10-1.png)<!-- -->
+![](Homework-5_files/figure-gfm/unnamed-chunk-6-1.png)<!-- -->
 
-- [ ] make a second plot, or overlay on the above, the average estimate
-  of mean-hat *only in the samples for which the null was rejected* (ie
-  significant samples) on the y axis and the true value of mean on the x
-  axis
-  - [ ] is the sample average of mean-hat across tests for which the
-    null is rejected approximately equal to the true value of mean? why
-    or why not?
+The sample average of $\hat{\mu}$ across tests for which the null is
+rejected is not approximately equal to the true value of $\mu$. I am not
+sure why this is.
 
 ### Problem 3
