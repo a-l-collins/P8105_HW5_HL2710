@@ -150,14 +150,14 @@ Importing the data, tidying the data, and creating a table with the number of re
 ```{r message = FALSE}
 homicide_raw <- read_csv(file = "./data/homicide-data.csv") %>% 
   janitor::clean_names() %>% 
-  mutate(city_state = paste(city, ", ", state)) %>% 
-  select(city_state, disposition, everything())
+  mutate(city_state = paste(city, ", ", state),
+         resolved = disposition == "Closed by arrest",
+         resolved = case_match(resolved,
+                               TRUE ~ 1,
+                               FALSE ~ 0)) %>% 
+  select(city_state, disposition, resolved, everything())
 
 homicide_counts <- homicide_raw %>% 
-  mutate(resolved = disposition == "Closed by arrest",
-         resolved = case_match(resolved,
-                               TRUE ~ "resolved_yes",
-                               FALSE ~ "resolved_no")) %>% 
   group_by(city_state) %>% 
   count(resolved) %>% 
   pivot_wider(
@@ -172,14 +172,50 @@ The homicide data has `r nrow(homicide_raw)` observations of `r ncol(homicide_ra
 
 #### Running `prop.test`
 
-- [ ] for baltimore, md specifically
-- [ ] use `prop.test` to estimate the proportion of homicides that are unsolved
-- [ ] save the output of `prop.test` as an R object
-- [ ] apply `broom::tidy` to this object and pull the estimated proportion and confidence intervals from the resulting tidy dataframe
+Creating the function that will run `prop.test` for the `homicide_raw` dataframe:
 
-- [ ] now run `prop.test` for each city within the dataset
-- [ ] extract both the proportion of unresolved homicides, and the confidence interval for each
-- [ ] do this within a "tidy" pipeline, using `purrr::map` and `purrr::map2`, list columns, and `unnest` as necessary to create a tidy dataframe with estimated proportions and CIs for each city
+```{r}
+homicide_proptest = function(city) {
+  city_test <- city
+  
+  homicide_test <- homicide_raw %>% 
+    filter(city_state == city_test)
+  
+  # in a separate pipeline in order to have r find "resolved"
+  test <- prop.test(
+      x = sum(pull(homicide_test, resolved)), 
+      n = nrow(homicide_test),
+      p = NULL,
+      conf.level = 0.95) %>% 
+    broom::tidy() %>% 
+    mutate(city_state = city) %>% 
+    select(city_state, estimate, conf.low, conf.high)
+  
+  test
+}
+```
+
+Testing the `homicide_proptest` function on Baltimore, MD only:
+
+```{r}
+homicide_baltimore <- homicide_proptest(city = "Baltimore ,  MD")
+
+homicide_baltimore
+```
+
+Running the function on all cities within the `homicide_raw` dataframe:
+
+1. Extracting all unique `city_state` names
+2. Iterating through the unique `city_state` names in the `homicide_proptest` function using `purrr::map_dfr`
+
+```{r warning = FALSE}
+homicide_cities <- unique(pull(homicide_raw, city_state))
+
+homicide_estimates <- purrr::map_dfr(homicide_cities, homicide_proptest)
+
+head(homicide_estimates)
+```
+
 
 #### Plot 1: 
 

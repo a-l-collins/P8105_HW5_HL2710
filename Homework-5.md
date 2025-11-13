@@ -152,14 +152,14 @@ present within the database:
 ``` r
 homicide_raw <- read_csv(file = "./data/homicide-data.csv") %>% 
   janitor::clean_names() %>% 
-  mutate(city_state = paste(city, ", ", state)) %>% 
-  select(city_state, disposition, everything())
+  mutate(city_state = paste(city, ", ", state),
+         resolved = disposition == "Closed by arrest",
+         resolved = case_match(resolved,
+                               TRUE ~ 1,
+                               FALSE ~ 0)) %>% 
+  select(city_state, disposition, resolved, everything())
 
 homicide_counts <- homicide_raw %>% 
-  mutate(resolved = disposition == "Closed by arrest",
-         resolved = case_match(resolved,
-                               TRUE ~ "resolved_yes",
-                               FALSE ~ "resolved_no")) %>% 
   group_by(city_state) %>% 
   count(resolved) %>% 
   pivot_wider(
@@ -224,7 +224,7 @@ knitr::kable(homicide_counts, col.names = c("City, State", "Unresolved Homicide 
 | Tulsa , OK          |                       193 |                     390 |
 | Washington , DC     |                       589 |                     756 |
 
-The homicide data has 52179 observations of 13 variables, one of which
+The homicide data has 52179 observations of 14 variables, one of which
 includes a combined `city_state` variable that has both the city and the
 state in which the homicide took place. The data describes where the
 homicide took place, the report date, basic demographics of the victim
@@ -232,24 +232,66 @@ in the report, and locational data for each homicide.
 
 #### Running `prop.test`
 
-- [ ] for baltimore, md specifically
+Creating the function that will run `prop.test` for the `homicide_raw`
+dataframe:
 
-- [ ] use `prop.test` to estimate the proportion of homicides that are
-  unsolved
+``` r
+homicide_proptest = function(city) {
+  city_test <- city
+  
+  homicide_test <- homicide_raw %>% 
+    filter(city_state == city_test)
+  
+  # in a separate pipeline in order to have r find "resolved"
+  test <- prop.test(
+      x = sum(pull(homicide_test, resolved)), 
+      n = nrow(homicide_test),
+      p = NULL,
+      conf.level = 0.95) %>% 
+    broom::tidy() %>% 
+    mutate(city_state = city) %>% 
+    select(city_state, estimate, conf.low, conf.high)
+  
+  test
+}
+```
 
-- [ ] save the output of `prop.test` as an R object
+Testing the `homicide_proptest` function on Baltimore, MD only:
 
-- [ ] apply `broom::tidy` to this object and pull the estimated
-  proportion and confidence intervals from the resulting tidy dataframe
+``` r
+homicide_baltimore <- homicide_proptest(city = "Baltimore ,  MD")
 
-- [ ] now run `prop.test` for each city within the dataset
+homicide_baltimore
+```
 
-- [ ] extract both the proportion of unresolved homicides, and the
-  confidence interval for each
+    ## # A tibble: 1 × 4
+    ##   city_state      estimate conf.low conf.high
+    ##   <chr>              <dbl>    <dbl>     <dbl>
+    ## 1 Baltimore ,  MD    0.354    0.337     0.372
 
-- [ ] do this within a “tidy” pipeline, using `purrr::map` and
-  `purrr::map2`, list columns, and `unnest` as necessary to create a
-  tidy dataframe with estimated proportions and CIs for each city
+Running the function on all cities within the `homicide_raw` dataframe:
+
+1.  Extracting all unique `city_state` names
+2.  Iterating through the unique `city_state` names in the
+    `homicide_proptest` function using `purrr::map_dfr`
+
+``` r
+homicide_cities <- unique(pull(homicide_raw, city_state))
+
+homicide_estimates <- purrr::map_dfr(homicide_cities, homicide_proptest)
+
+head(homicide_estimates)
+```
+
+    ## # A tibble: 6 × 4
+    ##   city_state        estimate conf.low conf.high
+    ##   <chr>                <dbl>    <dbl>     <dbl>
+    ## 1 Albuquerque ,  NM    0.614    0.562     0.663
+    ## 2 Atlanta ,  GA        0.617    0.585     0.647
+    ## 3 Baltimore ,  MD      0.354    0.337     0.372
+    ## 4 Baton Rouge ,  LA    0.538    0.489     0.586
+    ## 5 Birmingham ,  AL     0.566    0.531     0.601
+    ## 6 Boston ,  MA         0.495    0.455     0.535
 
 #### Plot 1:
 
