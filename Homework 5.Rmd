@@ -142,3 +142,47 @@ The sample average of $\hat{\mu}$ across tests for which the null is rejected is
 
 
 ### Problem 3
+
+#### Preparing the data
+
+Importing the data, tidying the data, and creating a table with the number of resolved and unresolved homicides for each of the cities present within the database:
+
+```{r message = FALSE}
+homicide_raw <- read_csv(file = "./data/homicide-data.csv") %>% 
+  janitor::clean_names() %>% 
+  mutate(city_state = paste(city, ", ", state)) %>% 
+  select(city_state, disposition, everything())
+
+homicide_counts <- homicide_raw %>% 
+  mutate(resolved = disposition == "Closed by arrest",
+         resolved = case_match(resolved,
+                               TRUE ~ "resolved_yes",
+                               FALSE ~ "resolved_no")) %>% 
+  group_by(city_state) %>% 
+  count(resolved) %>% 
+  pivot_wider(
+    names_from = resolved,
+    values_from = n
+  )
+
+knitr::kable(homicide_counts, col.names = c("City, State", "Unresolved Homicide Cases", "Resolved Homicide Cases"))
+```
+
+The homicide data has `r nrow(homicide_raw)` observations of `r ncol(homicide_raw)` variables, one of which includes a combined `city_state` variable that has both the city and the state in which the homicide took place. The data describes where the homicide took place, the report date, basic demographics of the victim in the report, and locational data for each homicide.
+
+#### Running `prop.test`
+
+- [ ] for baltimore, md specifically
+- [ ] use `prop.test` to estimate the proportion of homicides that are unsolved
+- [ ] save the output of `prop.test` as an R object
+- [ ] apply `broom::tidy` to this object and pull the estimated proportion and confidence intervals from the resulting tidy dataframe
+
+- [ ] now run `prop.test` for each city within the dataset
+- [ ] extract both the proportion of unresolved homicides, and the confidence interval for each
+- [ ] do this within a "tidy" pipeline, using `purrr::map` and `purrr::map2`, list columns, and `unnest` as necessary to create a tidy dataframe with estimated proportions and CIs for each city
+
+#### Plot 1: 
+
+- [ ] create a plot that shows the estimates and CIs for each city
+- [ ] check out `geom_errorbar` for a way to add error bars based on upper and lower limits
+- [ ] organize cities according to the proportion of unsolved homicides

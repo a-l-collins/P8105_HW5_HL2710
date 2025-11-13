@@ -142,3 +142,118 @@ rejected is not approximately equal to the true value of $\mu$. I am not
 sure why this is.
 
 ### Problem 3
+
+#### Preparing the data
+
+Importing the data, tidying the data, and creating a table with the
+number of resolved and unresolved homicides for each of the cities
+present within the database:
+
+``` r
+homicide_raw <- read_csv(file = "./data/homicide-data.csv") %>% 
+  janitor::clean_names() %>% 
+  mutate(city_state = paste(city, ", ", state)) %>% 
+  select(city_state, disposition, everything())
+
+homicide_counts <- homicide_raw %>% 
+  mutate(resolved = disposition == "Closed by arrest",
+         resolved = case_match(resolved,
+                               TRUE ~ "resolved_yes",
+                               FALSE ~ "resolved_no")) %>% 
+  group_by(city_state) %>% 
+  count(resolved) %>% 
+  pivot_wider(
+    names_from = resolved,
+    values_from = n
+  )
+
+knitr::kable(homicide_counts, col.names = c("City, State", "Unresolved Homicide Cases", "Resolved Homicide Cases"))
+```
+
+| City, State         | Unresolved Homicide Cases | Resolved Homicide Cases |
+|:--------------------|--------------------------:|------------------------:|
+| Albuquerque , NM    |                       146 |                     232 |
+| Atlanta , GA        |                       373 |                     600 |
+| Baltimore , MD      |                      1825 |                    1002 |
+| Baton Rouge , LA    |                       196 |                     228 |
+| Birmingham , AL     |                       347 |                     453 |
+| Boston , MA         |                       310 |                     304 |
+| Buffalo , NY        |                       319 |                     202 |
+| Charlotte , NC      |                       206 |                     481 |
+| Chicago , IL        |                      4073 |                    1462 |
+| Cincinnati , OH     |                       309 |                     385 |
+| Columbus , OH       |                       575 |                     509 |
+| Dallas , TX         |                       754 |                     813 |
+| Denver , CO         |                       169 |                     143 |
+| Detroit , MI        |                      1482 |                    1037 |
+| Durham , NC         |                       101 |                     175 |
+| Fort Worth , TX     |                       255 |                     294 |
+| Fresno , CA         |                       169 |                     318 |
+| Houston , TX        |                      1493 |                    1449 |
+| Indianapolis , IN   |                       594 |                     728 |
+| Jacksonville , FL   |                       597 |                     571 |
+| Kansas City , MO    |                       486 |                     704 |
+| Las Vegas , NV      |                       572 |                     809 |
+| Long Beach , CA     |                       156 |                     222 |
+| Los Angeles , CA    |                      1106 |                    1151 |
+| Louisville , KY     |                       261 |                     315 |
+| Memphis , TN        |                       483 |                    1031 |
+| Miami , FL          |                       450 |                     294 |
+| Milwaukee , wI      |                       403 |                     712 |
+| Minneapolis , MN    |                       187 |                     179 |
+| Nashville , TN      |                       278 |                     489 |
+| New Orleans , LA    |                       930 |                     504 |
+| New York , NY       |                       243 |                     384 |
+| Oakland , CA        |                       508 |                     439 |
+| Oklahoma City , OK  |                       326 |                     346 |
+| Omaha , NE          |                       169 |                     240 |
+| Philadelphia , PA   |                      1360 |                    1677 |
+| Phoenix , AZ        |                       504 |                     410 |
+| Pittsburgh , PA     |                       337 |                     294 |
+| Richmond , VA       |                       113 |                     316 |
+| Sacramento , CA     |                       139 |                     237 |
+| San Antonio , TX    |                       357 |                     476 |
+| San Bernardino , CA |                       170 |                     105 |
+| San Diego , CA      |                       175 |                     286 |
+| San Francisco , CA  |                       336 |                     327 |
+| Savannah , GA       |                       115 |                     131 |
+| St. Louis , MO      |                       905 |                     772 |
+| Stockton , CA       |                       266 |                     178 |
+| Tampa , FL          |                        95 |                     113 |
+| Tulsa , AL          |                        NA |                       1 |
+| Tulsa , OK          |                       193 |                     390 |
+| Washington , DC     |                       589 |                     756 |
+
+The homicide data has 52179 observations of 13 variables, one of which
+includes a combined `city_state` variable that has both the city and the
+state in which the homicide took place. The data describes where the
+homicide took place, the report date, basic demographics of the victim
+in the report, and locational data for each homicide.
+
+#### Running `prop.test`
+
+- [ ] for baltimore, md specifically
+
+- [ ] use `prop.test` to estimate the proportion of homicides that are
+  unsolved
+
+- [ ] save the output of `prop.test` as an R object
+
+- [ ] apply `broom::tidy` to this object and pull the estimated
+  proportion and confidence intervals from the resulting tidy dataframe
+
+- [ ] now run `prop.test` for each city within the dataset
+
+- [ ] extract both the proportion of unresolved homicides, and the
+  confidence interval for each
+
+- [ ] do this within a “tidy” pipeline, using `purrr::map` and
+  `purrr::map2`, list columns, and `unnest` as necessary to create a
+  tidy dataframe with estimated proportions and CIs for each city
+
+#### Plot 1:
+
+- [ ] create a plot that shows the estimates and CIs for each city
+- [ ] check out `geom_errorbar` for a way to add error bars based on
+  upper and lower limits
+- [ ] organize cities according to the proportion of unsolved homicides
